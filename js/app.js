@@ -156,7 +156,8 @@ let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 } catch (e) {
-  $('#loaderText').textContent = "Brauzeringiz WebGL'ni qo'llab-quvvatlamaydi. Boshqa brauzerda oching.";
+  const msg = "Brauzeringiz yoki qurilmangiz WebGL'ni qo'llab-quvvatlamaydi (yoki u o'chirilgan). Chrome yoki Safari'da oching.";
+  if (window.__lolaFail) window.__lolaFail(msg); else $('#loaderText').textContent = msg;
   throw e;
 }
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
@@ -174,7 +175,25 @@ scene.fog = new THREE.FogExp2(0x0c1428, 0.0062);
 const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.05, 1400);
 camera.position.set(120, 60, 150);
 
-const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 }));
+/* Post-processing: HDR + MSAA faqat qurilma qo'llasa. Aks holda oddiy render target. */
+const GL = renderer.getContext();
+const HDR_OK = renderer.capabilities.isWebGL2 && !!(GL.getExtension('EXT_color_buffer_float') || GL.getExtension('EXT_color_buffer_half_float'));
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, {
+  type: HDR_OK ? THREE.HalfFloatType : THREE.UnsignedByteType,
+  samples: HDR_OK ? 4 : 0,
+}));
+let useComposer = true;      // qora ekran aniqlansa false bo'ladi (to'g'ridan-to'g'ri render)
+let blackChecks = 0;
+const px = new Uint8Array(4);
+/** Bir necha nuqtada ekran butunlay qora emasligini tekshirish. Osmon hech qachon sof qora emas. */
+function frameIsBlack() {
+  const w = GL.drawingBufferWidth, h = GL.drawingBufferHeight;
+  for (const [fx, fy] of [[0.5, 0.85], [0.2, 0.6], [0.8, 0.4], [0.5, 0.5]]) {
+    GL.readPixels((w * fx) | 0, (h * fy) | 0, 1, 1, GL.RGBA, GL.UNSIGNED_BYTE, px);
+    if (px[0] + px[1] + px[2] > 0) return false;
+  }
+  return true;
+}
 composer.setPixelRatio(renderer.getPixelRatio());
 composer.setSize(innerWidth, innerHeight);
 composer.addPass(new RenderPass(scene, camera));
@@ -2380,7 +2399,18 @@ function tick() {
   const az = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
   $('#compassNeedle').setAttribute('transform', `rotate(${(az * 180) / Math.PI} 20 20)`);
 
-  composer.render(dt);
+  if (useComposer) {
+    composer.render(dt);
+    // birinchi kadrlarda post-processing qora ekran bersa, oddiy renderga o'tamiz
+    if (blackChecks < 6 && window.__lolaReady) {
+      blackChecks++;
+      if (frameIsBlack()) {
+        if (blackChecks >= 3) { useComposer = false; console.warn("Post-processing ishlamadi, oddiy renderga o'tildi"); }
+      } else blackChecks = 6;
+    }
+  } else {
+    renderer.render(scene, camera);
+  }
   requestAnimationFrame(tick);
 }
 
@@ -2444,6 +2474,7 @@ async function init() {
 
   setLoad(100);
   requestAnimationFrame(tick);
+  window.__lolaReady = true;
   setTimeout(() => $('#loader').classList.add('is-done'), 250);
 
   if (hashMode && hashMode !== 'overview') {
@@ -2459,7 +2490,7 @@ async function init() {
 }
 init().catch(err => {
   console.error(err);
-  $('#loaderText').textContent = "3D sahnani yuklab bo'lmadi. Sahifani yangilang.";
+  $('#loaderText').textContent = `3D sahnani yuklab bo'lmadi: ${err && err.message ? err.message : err}. Sahifani yangilang.`;
 });
 
-window.LOLA = { PROJECT, UNITS, S, setMode, openUnit, enterWalk, selectFloor, camera, controls, floors, THREE, scene, cutPlane };
+window.LOLA = { PROJECT, UNITS, S, setMode, openUnit, enterWalk, selectFloor, camera, controls, floors, THREE, scene, cutPlane, directRender: () => { useComposer = false; }, info: () => ({ hdr: HDR_OK, composer: useComposer }) };

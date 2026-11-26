@@ -10,6 +10,35 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Unbounded:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="css/style.css">
+<script>
+/* 3D yuklanmasa sababini ekranda ko'rsatish */
+(function () {
+  var done = false;
+  function fail(msg) {
+    if (done || window.__lolaReady) return;
+    done = true;
+    var t = document.getElementById('loaderText');
+    if (t) t.textContent = msg;
+    document.documentElement.className += ' load-failed';
+  }
+  window.__lolaFail = fail;
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'LINK') return; // shrift yuklanmasa ham sahna ishlaydi
+    var src = e.target && (e.target.src || e.target.href);
+    fail(src
+      ? "3D fayllari yuklanmadi (" + src.split('/').slice(-2).join('/') + " yoki u chaqiradigan three.js kutubxonasi cdn.jsdelivr.net dan). Internetni tekshiring, sahifani yangilang."
+      : "3D sahna yuklanmadi: " + (e.message || "noma'lum xato") + ". Sahifani yangilang.");
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    fail("3D sahna yuklanmadi: " + ((e.reason && e.reason.message) || e.reason) + ".");
+  });
+  setTimeout(function () {
+    fail("3D sahna 25 soniyada yuklanmadi. Internet aloqasini tekshiring yoki boshqa brauzerda oching (Chrome, Safari 16.4+).");
+  }, 25000);
+})();
+</script>
+<!-- import map'ni qo'llamaydigan eski brauzerlar uchun -->
+<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">
 {
   "imports": {
