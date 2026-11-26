@@ -23,6 +23,9 @@ const PROJECT = {
   phone: '+998 71 200 00 00',
   leadEndpoint: '',             // CRM yoki Telegram-bot webhook manzili. Bo'sh bo'lsa so'rov brauzerda saqlanadi.
   roofArea: 860,
+  sunrise: 6.5,                 // quyosh chiqishi (soat, o'rtacha)
+  sunset: 18.5,                 // quyosh botishi
+  startHour: 21.5,              // sahifa ochilgandagi vaqt
 };
 
 const ROOF_PLACES = [
@@ -107,6 +110,8 @@ for (let f = 1; f <= RES; f++) {
       id: `${f + 1}${String(k + 1).padStart(2, '0')}`,
       f, floorNo: f + 1, side, idx, w, x0, rooms, corner, area, ppm, price, status,
       facing: side === 'park' ? "Bog' tomon" : "Ko'cha tomon",
+      sides: (side === 'park' ? 'Shimol' : 'Janub') + (corner ? (idx === 0 ? " va g'arb" : ' va sharq') : ''),
+      sun: (side === 'street' ? "Kun bo'yi" : 'Kam, yozda salqin') + (corner ? (idx === 0 ? ', kechki quyosh' : ', ertalabki quyosh') : ''),
       title: `${rooms} xonali, ${view}`,
       mirror: x0 + w / 2 > 0,
       sgn: side === 'park' ? -1 : 1,
@@ -232,23 +237,21 @@ function facadeTex(lenM, seed) {
     g.fillStyle = '#c4baab'; g.fillRect(x, 0, PX * 0.35, h);
     const wx = x + PX * 0.6, ww = bay - PX * 1.2, wy = PX * 0.42, wh = h - PX * 0.95;
     g.fillStyle = '#2a2c31'; g.fillRect(wx - 3, wy - 3, ww + 6, wh + 6);
+    const glass = g.createLinearGradient(wx, wy, wx + ww * 0.6, wy + wh);
+    glass.addColorStop(0, '#6d86a3'); glass.addColorStop(0.45, '#3b4a60'); glass.addColorStop(1, '#222b39');
+    g.fillStyle = glass; g.fillRect(wx, wy, ww, wh);
     if (r() < 0.6) {
       const col = windowColor(r);
-      const grd = g.createLinearGradient(0, wy, 0, wy + wh);
+      const grd = ge.createLinearGradient(0, wy, 0, wy + wh);
       grd.addColorStop(0, `rgb(${col.map(v => (v * 0.62) | 0)})`);
       grd.addColorStop(1, `rgb(${col})`);
-      g.fillStyle = grd; g.fillRect(wx, wy, ww, wh);
       ge.fillStyle = grd; ge.fillRect(wx, wy, ww, wh);
-      if (r() < 0.55) {
-        const cw = ww * (0.14 + r() * 0.22);
-        g.fillStyle = 'rgba(70,45,30,0.45)'; ge.fillStyle = 'rgba(0,0,0,0.6)';
-        g.fillRect(wx, wy, cw, wh); ge.fillRect(wx, wy, cw, wh);
-        g.fillRect(wx + ww - cw, wy, cw, wh); ge.fillRect(wx + ww - cw, wy, cw, wh);
-      }
-    } else {
-      const grd = g.createLinearGradient(wx, wy, wx + ww, wy + wh);
-      grd.addColorStop(0, '#1e283b'); grd.addColorStop(1, '#0d121c');
-      g.fillStyle = grd; g.fillRect(wx, wy, ww, wh);
+    }
+    if (r() < 0.5) {
+      const cw = ww * (0.14 + r() * 0.22);
+      g.fillStyle = 'rgba(226,216,198,0.75)'; ge.fillStyle = 'rgba(0,0,0,0.6)';
+      g.fillRect(wx, wy, cw, wh); ge.fillRect(wx, wy, cw, wh);
+      g.fillRect(wx + ww - cw, wy, cw, wh); ge.fillRect(wx + ww - cw, wy, cw, wh);
     }
     g.fillStyle = '#2a2c31'; ge.fillStyle = '#000';
     g.fillRect(wx + ww / 2 - 1.5, wy, 3, wh); ge.fillRect(wx + ww / 2 - 1.5, wy, 3, wh);
@@ -260,23 +263,35 @@ function facadeTex(lenM, seed) {
 function facadeInnerTex(lenM) {
   const PX = 64;
   const w = Math.round(lenM * PX), h = Math.round(F_H * PX);
-  const [c, g] = makeCanvas(w, h);
-  g.fillStyle = '#eceae6'; g.fillRect(0, 0, w, h);
   const bays = Math.round(lenM / 3), bay = w / bays;
-  const r = rng(lenM * 31);
-  for (let k = 0; k < bays; k++) {
-    const x = k * bay, wx = x + PX * 0.6, ww = bay - PX * 1.2, wy = PX * 0.42, wh = h - PX * 0.95;
-    g.fillStyle = '#d9d6d0'; g.fillRect(wx - 4, wy - 4, ww + 8, wh + 8);
-    const grd = g.createLinearGradient(0, wy, 0, wy + wh);
-    grd.addColorStop(0, '#0b1224'); grd.addColorStop(1, '#1d2a4a');
-    g.fillStyle = grd; g.fillRect(wx, wy, ww, wh);
-    for (let i = 0; i < 26; i++) {
-      g.fillStyle = r() < 0.7 ? 'rgba(255,200,120,0.9)' : 'rgba(180,200,255,0.8)';
-      g.fillRect(wx + r() * ww, wy + wh * (0.45 + r() * 0.5), 2.5, 2.5);
+  const draw = (g, day, mask) => {
+    const r = rng(lenM * 31);
+    g.fillStyle = mask ? '#000' : '#eceae6'; g.fillRect(0, 0, w, h);
+    for (let k = 0; k < bays; k++) {
+      const x = k * bay, wx = x + PX * 0.6, ww = bay - PX * 1.2, wy = PX * 0.42, wh = h - PX * 0.95;
+      if (mask) { g.fillStyle = '#fff'; g.fillRect(wx, wy, ww, wh); continue; }
+      g.fillStyle = '#d9d6d0'; g.fillRect(wx - 4, wy - 4, ww + 8, wh + 8);
+      const grd = g.createLinearGradient(0, wy, 0, wy + wh);
+      if (day) { grd.addColorStop(0, '#9cc3ea'); grd.addColorStop(1, '#e6eef6'); }
+      else { grd.addColorStop(0, '#0b1224'); grd.addColorStop(1, '#1d2a4a'); }
+      g.fillStyle = grd; g.fillRect(wx, wy, ww, wh);
+      for (let i = 0; i < 9; i++) {
+        const bw = ww * (0.06 + r() * 0.14), bh = wh * (0.12 + r() * 0.3);
+        const bx = wx + r() * (ww - bw);
+        g.fillStyle = day ? 'rgba(150,166,186,0.85)' : 'rgba(18,24,40,0.9)';
+        g.fillRect(bx, wy + wh - bh, bw, bh);
+        if (!day) for (let j = 0; j < 4; j++) { g.fillStyle = r() < 0.7 ? 'rgba(255,200,120,0.9)' : 'rgba(180,200,255,0.8)'; g.fillRect(bx + r() * bw, wy + wh - r() * bh, 2.5, 2.5); }
+      }
+      g.fillStyle = '#f4f2ee'; g.fillRect(wx + ww / 2 - 2, wy, 4, wh); g.fillRect(wx, wy + wh * 0.2, ww, 3);
     }
-    g.fillStyle = '#f4f2ee'; g.fillRect(wx + ww / 2 - 2, wy, 4, wh); g.fillRect(wx, wy + wh * 0.2, ww, 3);
+  };
+  const out = {};
+  for (const [key, day, mask] of [['night', false, false], ['day', true, false], ['mask', false, true]]) {
+    const [c, g] = makeCanvas(w, h);
+    draw(g, day, mask);
+    out[key] = tex(c, { srgb: !mask });
   }
-  return tex(c);
+  return out;
 }
 function storefrontTex(lenM, signs, seed) {
   const w = Math.round(lenM * PX), h = Math.round(G_H * PX);
@@ -320,18 +335,17 @@ function cityTex(seed) {
   const [c, g] = makeCanvas(w, w);
   const [ce, ge] = makeCanvas(w, w);
   const r = rng(seed);
-  g.fillStyle = '#2b303b'; g.fillRect(0, 0, w, w);
+  const tones = ['#8d8a84', '#7b828d', '#9a8f80'];
+  g.fillStyle = tones[seed % 3]; g.fillRect(0, 0, w, w);
   noise(g, w, w, 14, seed);
   ge.fillStyle = '#000'; ge.fillRect(0, 0, w, w);
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
     const px = x * cell + 6, py = y * cell + 7, ww = cell - 12, hh = cell - 13;
+    g.fillStyle = r() < 0.5 ? '#33404f' : '#283240'; g.fillRect(px, py, ww, hh);
     if (r() < 0.3) {
       const col = windowColor(r);
       const s = 0.55 + r() * 0.45;
-      g.fillStyle = `rgb(${col.map(v => (v * s) | 0)})`; g.fillRect(px, py, ww, hh);
-      ge.fillStyle = g.fillStyle; ge.fillRect(px, py, ww, hh);
-    } else {
-      g.fillStyle = '#11151e'; g.fillRect(px, py, ww, hh);
+      ge.fillStyle = `rgb(${col.map(v => (v * s) | 0)})`; ge.fillRect(px, py, ww, hh);
     }
   }
   return { map: tex(c), emissiveMap: tex(ce) };
@@ -467,8 +481,8 @@ function initMaterials() {
   const fac = t => bm({ map: t.map, emissiveMap: t.emissiveMap, emissive: 0xffffff, emissiveIntensity: 1.5, roughness: 0.82 });
   M.facadeL = T.facadeL.map(t => fac(t));
   M.facadeS = T.facadeS.map(t => fac(t));
-  M.innerL = bm({ map: T.innerL, roughness: 0.9 });
-  M.innerS = bm({ map: T.innerS, roughness: 0.9 });
+  M.innerL = bm({ map: T.innerL.night, emissiveMap: T.innerL.mask, emissive: 0xffffff, emissiveIntensity: 0.1, roughness: 0.9 });
+  M.innerS = bm({ map: T.innerS.night, emissiveMap: T.innerS.mask, emissive: 0xffffff, emissiveIntensity: 0.1, roughness: 0.9 });
   M.stone = bm({ color: 0xd0c7b9, roughness: 0.85 });
   M.band = bm({ color: 0xe2dbcf, roughness: 0.7 });
   M.storeFront = bm({ map: T.storeFront.map, emissiveMap: T.storeFront.emissiveMap, emissive: 0xffffff, emissiveIntensity: 1.6, roughness: 0.4 });
@@ -536,7 +550,7 @@ function initMaterials() {
   M.paving = new THREE.MeshStandardMaterial({ color: 0x6b6862, roughness: 0.95 });
   M.parkGrass = new THREE.MeshStandardMaterial({ map: T.grass, roughness: 1 });
   M.tree = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, flatShading: true });
-  M.cityRoof = new THREE.MeshStandardMaterial({ color: 0x23262d, roughness: 1 });
+  M.cityRoof = new THREE.MeshStandardMaterial({ color: 0x6a6e75, roughness: 1 });
   M.treeTrunk = new THREE.MeshStandardMaterial({ color: 0x3b2c20, roughness: 1 });
   M.pole = new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.6, metalness: 0.5 });
   M.lampHead = new THREE.MeshStandardMaterial({ color: 0xfff0d0, emissive: 0xffd28c, emissiveIntensity: 5 });
@@ -1006,19 +1020,33 @@ function ensureInterior(f) {
 const env = new THREE.Group();
 scene.add(env);
 const cars = [];
+const LAMP_LIGHTS = [], CITY_MATS = [];
+const MOON_DIR = new THREE.Vector3(-0.45, 0.8, 0.4).normalize();
+let SKY = null, starsMat = null;
 let landscape, construction, crane, parkTreesMesh, parkTreeData = [];
 
 function buildSky() {
   const geo = new THREE.SphereGeometry(700, 32, 16);
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { top: { value: new THREE.Color(0x050914) }, mid: { value: new THREE.Color(0x14203f) }, hor: { value: new THREE.Color(0x3a3a5e) }, glow: { value: new THREE.Color(0x6a4a52) } },
+    uniforms: {
+      top: { value: new THREE.Color(0x050914) }, mid: { value: new THREE.Color(0x14203f) }, hor: { value: new THREE.Color(0x3a3a5e) }, glow: { value: new THREE.Color(0x6a4a52) },
+      sunDir: { value: new THREE.Vector3(0, -1, 0) }, sunCol: { value: new THREE.Color(0xffffff) }, sunAmt: { value: 0 },
+      moonDir: { value: MOON_DIR.clone() }, moonAmt: { value: 1 }, glowDir: { value: new THREE.Vector2(-0.6, -1) },
+    },
     vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: `uniform vec3 top; uniform vec3 mid; uniform vec3 hor; uniform vec3 glow; varying vec3 vP;
-      void main(){ float h = vP.y; vec3 c = mix(hor, mid, smoothstep(0.0, 0.18, h)); c = mix(c, top, smoothstep(0.18, 0.7, h));
-      float g = pow(max(0.0, 1.0 - abs(h) * 6.0), 2.0) * smoothstep(-0.2, 1.0, dot(normalize(vP.xz), normalize(vec2(-0.6, -1.0))));
-      c += glow * g * 0.6; if (h < 0.0) c = hor * 0.6; gl_FragColor = vec4(c, 1.0); }`,
+    fragmentShader: `uniform vec3 top; uniform vec3 mid; uniform vec3 hor; uniform vec3 glow; uniform vec3 sunDir; uniform vec3 sunCol; uniform float sunAmt;
+      uniform vec3 moonDir; uniform float moonAmt; uniform vec2 glowDir; varying vec3 vP;
+      void main(){ vec3 d = normalize(vP); float h = d.y; vec3 c = mix(hor, mid, smoothstep(0.0, 0.18, h)); c = mix(c, top, smoothstep(0.18, 0.7, h));
+      float g = pow(max(0.0, 1.0 - abs(h) * 5.0), 2.0) * smoothstep(-0.3, 1.0, dot(normalize(d.xz), normalize(glowDir)));
+      c += glow * g * 0.7;
+      float sd = max(dot(d, sunDir), 0.0);
+      c += sunCol * (smoothstep(0.9993, 0.9996, sd) * 6.0 + pow(sd, 90.0) * 0.8 + pow(sd, 8.0) * 0.12) * sunAmt;
+      float md = max(dot(d, moonDir), 0.0);
+      c += vec3(0.92, 0.94, 1.0) * (smoothstep(0.99955, 0.9997, md) * 2.2 + pow(md, 300.0) * 0.25) * moonAmt;
+      if (h < 0.0) c = hor * 0.6; gl_FragColor = vec4(c, 1.0); }`,
   });
+  SKY = mat.uniforms;
   scene.add(new THREE.Mesh(geo, mat));
   const r = rng(5), pts = [];
   for (let i = 0; i < 1400; i++) {
@@ -1026,8 +1054,8 @@ function buildSky() {
     pts.push(new THREE.Vector3().setFromSphericalCoords(650, ph, th));
   }
   const sg = new THREE.BufferGeometry().setFromPoints(pts);
-  const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xdfe6ff, size: 1.4, sizeAttenuation: false, transparent: true, opacity: 0.75, fog: false }));
-  scene.add(stars);
+  starsMat = new THREE.PointsMaterial({ color: 0xdfe6ff, size: 1.4, sizeAttenuation: false, transparent: true, opacity: 0.75, fog: false });
+  scene.add(new THREE.Points(sg, starsMat));
 }
 
 function addTreeInstances(list, parent) {
@@ -1158,11 +1186,15 @@ function buildEnvironment() {
   for (const x of [-18, -4, 10, 24]) {
     const pl = new THREE.PointLight(0xffc98a, 60, 26, 1.8);
     pl.position.set(x, 6.4, 13.2);
+    pl.userData.base = 60;
     env.add(pl);
+    LAMP_LIGHTS.push(pl);
   }
   const parkLight = new THREE.PointLight(0xffd6a0, 40, 30, 1.8);
   parkLight.position.set(0, 4, -24);
+  parkLight.userData.base = 40;
   env.add(parkLight);
+  LAMP_LIGHTS.push(parkLight);
 
   // atrofdagi uylar
   const cr = rng(99);
@@ -1173,9 +1205,9 @@ function buildEnvironment() {
     if (Math.abs(Math.abs(x) - 41) < 13) continue;       // yon ko'chalar
     if (Math.abs(x) < 40 && z > -50 && z < 30) continue; // bino va park
     const dist = Math.hypot(x, z);
-    if (dist < 62 || cr() < 0.3) continue;
+    if (dist < 78 || cr() < 0.4) continue;
     const sx = 9 + cr() * 7, sz = 9 + cr() * 7;
-    const sy = 7 + cr() * (dist > 120 ? 40 : dist > 85 ? 22 : 12);
+    const sy = 7 + cr() * (dist > 130 ? 38 : dist > 100 ? 20 : 10);
     blocks.push({ x, z, sx, sy, sz });
   }
   for (const bl of blocks) {
@@ -1183,6 +1215,7 @@ function buildEnvironment() {
     const map = t.map.clone(), em = t.emissiveMap.clone();
     for (const tt of [map, em]) { tt.wrapS = tt.wrapT = THREE.RepeatWrapping; tt.repeat.set(bl.sx / 48, bl.sy / 51); tt.needsUpdate = true; }
     const m = new THREE.MeshStandardMaterial({ map, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0.55, roughness: 0.9 });
+    CITY_MATS.push(m);
     const b = mesh(BOX, [m, m, M.cityRoof, M.cityRoof, m, m], { cast: false, receive: true });
     b.scale.set(bl.sx, bl.sy, bl.sz);
     b.position.set(bl.x, bl.sy / 2, bl.z);
@@ -1262,6 +1295,82 @@ const LIGHT = {
 };
 const lightNow = { hemi: 0.75, keyI: 0.8, exp: 1.0, floorGlow: 0, bloom: 0.55, hemiSky: new THREE.Color(0x50608c), hemiGround: new THREE.Color(0x14121c), key: new THREE.Color(0x9db2ff) };
 
+/* ---------- kun vaqti: tun, tong, kunduz, shom ----------
+   Har bir kalit nuqta: osmon ranglari, tuman, yorug'lik, derazalar (win), ko'cha chiroqlari (lamps), yulduzlar. */
+const TOD_KEYS = [
+  { h: 0, top: 0x050914, mid: 0x14203f, hor: 0x3a3a5e, glow: 0x5a4060, fog: 0x0c1428, fogD: 0.0062, hs: 0x50608c, hg: 0x14121c, hemi: 0.75, key: 0x9db2ff, keyI: 0.8, exp: 1.0, win: 1, lamps: 1, stars: 1, bloom: 0.55, day: 0 },
+  { h: 5.2, top: 0x08112a, mid: 0x1c2850, hor: 0x4a4468, glow: 0x7a5068, fog: 0x1a2038, fogD: 0.0058, hs: 0x5a6890, hg: 0x18141e, hemi: 0.75, key: 0x9db2ff, keyI: 0.6, exp: 1.0, win: 0.85, lamps: 1, stars: 0.6, bloom: 0.5, day: 0.05 },
+  { h: 6.6, top: 0x2a4170, mid: 0x6a80b0, hor: 0xf2a878, glow: 0xffa060, fog: 0x9a8aa0, fogD: 0.0042, hs: 0xa8b4d4, hg: 0x4a3a34, hemi: 1.0, key: 0xffb27a, keyI: 2.4, exp: 0.95, win: 0.35, lamps: 0.25, stars: 0, bloom: 0.32, day: 0.55 },
+  { h: 8.5, top: 0x3a74c4, mid: 0x80b0e2, hor: 0xd4e4f2, glow: 0xfff0d8, fog: 0xb4c8de, fogD: 0.0030, hs: 0xc4d8f2, hg: 0x6a5c4c, hemi: 1.35, key: 0xfff0da, keyI: 3.0, exp: 0.85, win: 0.05, lamps: 0, stars: 0, bloom: 0.12, day: 1 },
+  { h: 13, top: 0x3168c0, mid: 0x74aae6, hor: 0xd8e9f6, glow: 0xffffff, fog: 0xb8cde4, fogD: 0.0028, hs: 0xc8dcf6, hg: 0x6e6050, hemi: 1.45, key: 0xfffaf0, keyI: 3.3, exp: 0.82, win: 0, lamps: 0, stars: 0, bloom: 0.1, day: 1 },
+  { h: 16.5, top: 0x3a6cb8, mid: 0x86aad8, hor: 0xe4dcd0, glow: 0xffe2b0, fog: 0xc0c4cc, fogD: 0.0030, hs: 0xc8d2e8, hg: 0x6e5a48, hemi: 1.3, key: 0xffe2b8, keyI: 2.9, exp: 0.85, win: 0.08, lamps: 0, stars: 0, bloom: 0.14, day: 0.95 },
+  { h: 18.1, top: 0x2c3a72, mid: 0x7470a4, hor: 0xff9c5c, glow: 0xff7a3c, fog: 0x9c7a7c, fogD: 0.0042, hs: 0xb4a2c4, hg: 0x4a3030, hemi: 0.95, key: 0xff9050, keyI: 2.1, exp: 0.95, win: 0.55, lamps: 0.5, stars: 0, bloom: 0.38, day: 0.5 },
+  { h: 19.3, top: 0x0f1a3c, mid: 0x283568, hor: 0x7a5878, glow: 0xa05a58, fog: 0x262a48, fogD: 0.0055, hs: 0x5a6896, hg: 0x1a1622, hemi: 0.8, key: 0x8a9ce0, keyI: 0.7, exp: 1.0, win: 1, lamps: 1, stars: 0.5, bloom: 0.55, day: 0.1 },
+];
+TOD_KEYS.push({ ...TOD_KEYS[0], h: 24 });
+const TOD_COLORS = ['top', 'mid', 'hor', 'glow', 'fog', 'hs', 'hg', 'key'];
+const TOD_NUMS = ['fogD', 'hemi', 'keyI', 'exp', 'win', 'lamps', 'stars', 'bloom', 'day'];
+TOD_KEYS.forEach(k => TOD_COLORS.forEach(c => { k[c] = new THREE.Color(k[c]); }));
+const TOD = Object.fromEntries(TOD_COLORS.map(c => [c, new THREE.Color()]));
+function todProfile(h) {
+  h = ((h % 24) + 24) % 24;
+  let i = 0;
+  while (i < TOD_KEYS.length - 2 && TOD_KEYS[i + 1].h <= h) i++;
+  const a = TOD_KEYS[i], b = TOD_KEYS[i + 1];
+  const t = clamp((h - a.h) / (b.h - a.h), 0, 1);
+  const k = t * t * (3 - 2 * t);
+  TOD_COLORS.forEach(c => TOD[c].copy(a[c]).lerp(b[c], k));
+  TOD_NUMS.forEach(n => { TOD[n] = lerp(a[n], b[n], k); });
+  return TOD;
+}
+const SUN_DIR = new THREE.Vector3();
+/** Quyosh: sharq (+x) dan janub (+z) orqali g'arb (-x) ga. Qaytaradi: balandlik (radian). */
+function sunAt(h, out = SUN_DIR) {
+  const k = (h - PROJECT.sunrise) / (PROJECT.sunset - PROJECT.sunrise);
+  const phi = Math.PI * k;
+  const el = Math.sin(Math.PI * clamp(k, -0.12, 1.12)) * THREE.MathUtils.degToRad(58);
+  out.set(Math.cos(el) * Math.cos(phi), Math.sin(el), Math.cos(el) * Math.sin(phi) * 0.85 + 0.25).normalize();
+  return el;
+}
+function dayPhase(h) {
+  h = ((h % 24) + 24) % 24;
+  if (h < 5) return 'Tun';
+  if (h < 7.5) return 'Tong';
+  if (h < 11) return 'Ertalab';
+  if (h < 15.5) return 'Kunduz';
+  if (h < 17.8) return 'Tushdan keyin';
+  if (h < 19.6) return 'Shom';
+  return 'Tun';
+}
+const PLAN_C = { sky: new THREE.Color(LIGHT.plan.hemiSky), ground: new THREE.Color(LIGHT.plan.hemiGround), key: new THREE.Color(LIGHT.plan.key) };
+const WALK_C = { sky: new THREE.Color(LIGHT.walk.hemiSky), ground: new THREE.Color(LIGHT.walk.hemiGround), dayGround: new THREE.Color(0xc9bda9) };
+const TL = { hemiSky: new THREE.Color(), hemiGround: new THREE.Color(), key: new THREE.Color() };
+/** Rejim + kun vaqtidan maqsadli yorug'lik. */
+function targetLight(P) {
+  const d = P.day;
+  TL.hemi = P.hemi; TL.keyI = P.keyI; TL.exp = P.exp; TL.bloom = P.bloom; TL.floorGlow = 0;
+  TL.hemiSky.copy(P.hs); TL.hemiGround.copy(P.hg); TL.key.copy(P.key);
+  if (S.mode === 'homes') {
+    TL.hemi = lerp(LIGHT.plan.hemi, Math.max(P.hemi, 1.25), d);
+    TL.hemiSky.copy(PLAN_C.sky).lerp(P.hs, d * 0.4);
+    TL.hemiGround.copy(PLAN_C.ground).lerp(P.hg, d);
+    TL.keyI = lerp(LIGHT.plan.keyI, Math.max(P.keyI, 2.8), d);
+    TL.key.copy(PLAN_C.key).lerp(P.key, d);
+    TL.exp = lerp(LIGHT.plan.exp, 0.9, d);
+    TL.bloom = lerp(LIGHT.plan.bloom, 0.1, d);
+    TL.floorGlow = LIGHT.plan.floorGlow * (1 - d);
+  } else if (S.mode === 'walk') {
+    TL.hemi = lerp(LIGHT.walk.hemi, 1.6, d);
+    TL.hemiSky.copy(WALK_C.sky).lerp(P.hs, d * 0.6);
+    TL.hemiGround.copy(WALK_C.ground).lerp(WALK_C.dayGround, d);
+    TL.keyI = P.keyI * 0.3 * d;
+    TL.exp = lerp(LIGHT.walk.exp, 0.98, d);
+    TL.bloom = lerp(LIGHT.walk.bloom, 0.08, d);
+    TL.floorGlow = LIGHT.walk.floorGlow * (1 - d);
+  }
+  return TL;
+}
+
 /* =====================================================================
    10. HOLAT (state)
    ===================================================================== */
@@ -1274,6 +1383,7 @@ const S = {
   fly: null, interacted: false, placeIdx: -1,
   walkRoom: null, walkUnit: null,
   down: null,
+  hour: PROJECT.startHour, hourAnim: null,
 };
 
 const money = usd => {
@@ -1713,7 +1823,9 @@ function renderUnitPanel() {
         <div><dt>Maydon</dt><dd>${dec(u.area)} m²</dd></div>
         <div><dt>Xonalar</dt><dd>${u.rooms}</dd></div>
         <div><dt>Qavat</dt><dd>${u.floorNo} / 9</dd></div>
-        <div><dt>Derazalar</dt><dd>${u.corner ? `${u.facing}, burchak` : u.facing}</dd></div>
+        <div><dt>Derazalar</dt><dd>${u.sides}</dd></div>
+        <div><dt>Manzara</dt><dd>${u.side === 'park' ? 'Bog\'' : 'Shahar'}</dd></div>
+        <div><dt>Quyosh nuri</dt><dd>${u.sun}</dd></div>
         <div><dt>Shift balandligi</dt><dd>2,9 m</dd></div>
         <div><dt>Topshirish</dt><dd>${PROJECT.handover}</dd></div>
       </dl>
@@ -1985,6 +2097,68 @@ $('#buildPlay').addEventListener('click', () => animateProgress(1, 6, 0));
 $('#buildNow').addEventListener('click', () => animateProgress(PROJECT.progressNow, 1.6));
 $('#buildDone').addEventListener('click', () => animateProgress(1, 2.2));
 
+// kun vaqti paneli
+const fmtHour = h => { const m = Math.round((((h % 24) + 24) % 24) * 60) % 1440; return `${String((m / 60) | 0).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+const dlBox = $('#daylight');
+let dlLast = '';
+function setHour(to, { animate = true, dur } = {}) {
+  const from = S.hour;
+  const delta = ((to - from) % 24 + 24) % 24;
+  if (!animate || REDUCED || delta < 0.01) { S.hourAnim = null; S.hour = ((to % 24) + 24) % 24; return; }
+  S.hourAnim = { from, delta, t: 0, dur: dur ?? clamp(delta * 0.22, 0.8, 3.2) };
+}
+function renderDaylightUI() {
+  const key = fmtHour(S.hour);
+  if (key === dlLast) return;
+  dlLast = key;
+  const el = sunAt(S.hour);
+  const up = el > -0.02;
+  $('#dlTime').textContent = key;
+  $('#dlBig').textContent = key;
+  $('#dlLabel').textContent = dayPhase(S.hour);
+  $('#dlPhase').textContent = dayPhase(S.hour);
+  dlBox.classList.toggle('is-day', up);
+  document.body.classList.toggle('is-day', todProfile(S.hour).day > 0.4);
+  const range = $('#dlRange');
+  if (document.activeElement !== range) range.value = Math.round(S.hour * 60);
+  range.style.setProperty('--pos', `${(S.hour / 24) * 100}%`);
+  // quyosh yoyi: chiqishdan botishgacha yuqori yoy, kechasi pastda
+  const rise = PROJECT.sunrise, set = PROJECT.sunset;
+  let x, y;
+  if (S.hour >= rise && S.hour <= set) {
+    const k = (S.hour - rise) / (set - rise);
+    x = 120 - 96 * Math.cos(Math.PI * k); y = 62 - 46 * Math.sin(Math.PI * k);
+  } else {
+    const nightLen = 24 - (set - rise);
+    const k = (((S.hour - set) % 24) + 24) % 24 / nightLen;
+    x = 120 + 96 * Math.cos(Math.PI * k); y = 62 + 10 * Math.sin(Math.PI * k);
+  }
+  const dot = $('#dlSun');
+  dot.setAttribute('cx', x.toFixed(1)); dot.setAttribute('cy', y.toFixed(1));
+  dlBox.querySelectorAll('[data-hour]').forEach(b => b.classList.toggle('is-active', Math.abs(((S.hour - +b.dataset.hour + 36) % 24) - 12) < 0.25));
+}
+$('#dlToggle').addEventListener('click', () => {
+  const open = !dlBox.classList.contains('is-open');
+  dlBox.classList.toggle('is-open', open);
+  $('#dlToggle').setAttribute('aria-expanded', String(open));
+});
+document.addEventListener('pointerdown', e => {
+  if (dlBox.classList.contains('is-open') && !dlBox.contains(e.target)) {
+    dlBox.classList.remove('is-open');
+    $('#dlToggle').setAttribute('aria-expanded', 'false');
+  }
+});
+dlBox.addEventListener('click', e => {
+  const b = e.target.closest('[data-hour]');
+  if (b) setHour(+b.dataset.hour);
+});
+$('#dlRange').addEventListener('input', e => { S.hourAnim = null; S.hour = +e.target.value / 60; });
+$('#dlNow').addEventListener('click', () => { const d = new Date(); setHour(d.getHours() + d.getMinutes() / 60); });
+$('#dlPlay').addEventListener('click', () => {
+  if (S.hourAnim && S.hourAnim.linear) { S.hourAnim = null; return; }
+  S.hourAnim = { from: S.hour, delta: 24, t: 0, dur: 18, linear: true };
+});
+
 // so'rov oynasi
 const modal = $('#leadModal');
 let leadUnit = null, lastFocus = null;
@@ -2044,7 +2218,8 @@ async function submitLead(lead) {
 
 addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  if (modal.classList.contains('is-open')) closeLead();
+  if (dlBox.classList.contains('is-open')) { dlBox.classList.remove('is-open'); $('#dlToggle').setAttribute('aria-expanded', 'false'); }
+  else if (modal.classList.contains('is-open')) closeLead();
   else if (S.mode === 'walk') exitWalk();
   else if (S.unit) closeUnit(true);
   else if (S.mode !== 'overview') setMode('overview');
@@ -2066,10 +2241,42 @@ function renderHeroStats() {
    ===================================================================== */
 const clock = new THREE.Clock();
 const tmpC = new THREE.Color();
-function lightProfile() {
-  if (S.mode === 'walk') return LIGHT.walk;
-  if (S.mode === 'homes') return LIGHT.plan;
-  return LIGHT.night;
+const LIGHT_DIR = new THREE.Vector3();
+/** Kun vaqtiga qarab osmon, tuman, derazalar va chiroqlarni yangilash. */
+function applyDaylight(P) {
+  if (!SKY) return;
+  SKY.top.value.copy(P.top); SKY.mid.value.copy(P.mid); SKY.hor.value.copy(P.hor); SKY.glow.value.copy(P.glow);
+  const el = sunAt(S.hour);
+  SKY.sunDir.value.copy(SUN_DIR);
+  SKY.sunCol.value.copy(P.key);
+  SKY.sunAmt.value = clamp((el + 0.04) / 0.08, 0, 1);
+  SKY.moonAmt.value = P.stars;
+  const gd = SKY.sunAmt.value > 0.01 ? SUN_DIR : MOON_DIR;
+  SKY.glowDir.value.set(gd.x, gd.z);
+  starsMat.opacity = 0.75 * P.stars;
+  starsMat.visible = P.stars > 0.01;
+  scene.fog.color.copy(P.fog);
+  scene.fog.density = P.fogD;
+  const win = P.win, lamps = P.lamps;
+  M.facadeL.forEach(m => { m.emissiveIntensity = 1.5 * win; });
+  M.facadeS.forEach(m => { m.emissiveIntensity = 1.5 * win; });
+  M.storeFront.emissiveIntensity = 1.6 * (0.35 + 0.65 * win);
+  M.storeBack.emissiveIntensity = M.storeSide.emissiveIntensity = 1.2 * (0.35 + 0.65 * win);
+  CITY_MATS.forEach(m => { m.emissiveIntensity = 0.55 * win; });
+  M.lampHead.emissiveIntensity = 5 * lamps;
+  LAMP_LIGHTS.forEach(l => { l.intensity = l.userData.base * lamps; l.visible = lamps > 0.01; });
+  M.bulb.emissiveIntensity = 7 * Math.max(lamps, 0.12);
+  M.stripLight.emissiveIntensity = 4 * Math.max(lamps, 0.2);
+  M.glow.emissiveIntensity = 6 * (0.25 + 0.75 * win);
+  M.skylight.emissiveIntensity = 2.5 * (0.2 + 0.8 * win);
+  M.headlight.emissiveIntensity = 12 * Math.max(lamps, 0.15);
+  M.taillight.emissiveIntensity = 6 * Math.max(lamps, 0.4);
+  const dayWin = P.day > 0.45;
+  for (const [m, t] of [[M.innerL, T.innerL], [M.innerS, T.innerS]]) {
+    const want = dayWin ? t.day : t.night;
+    if (m.map !== want) m.map = want;
+    m.emissiveIntensity = lerp(0.1, 0.3, P.day);
+  }
 }
 function tick() {
   const dt = Math.min(0.05, clock.getDelta());
@@ -2104,27 +2311,44 @@ function tick() {
   S.shiftY = lerp(S.shiftY, S.shiftYTo, kc);
   applyShift();
 
+  // kun vaqti
+  if (S.hourAnim) {
+    const a = S.hourAnim;
+    a.t = Math.min(1, a.t + dt / a.dur);
+    S.hour = (((a.from + a.delta * (a.linear ? a.t : ease(a.t))) % 24) + 24) % 24;
+    if (a.t >= 1) S.hourAnim = null;
+  }
+  const P = todProfile(S.hour);
+  applyDaylight(P);
+  renderDaylightUI();
+
   // yorug'lik
-  const L = lightProfile();
+  const L = targetLight(P);
   const kl = 1 - Math.pow(0.02, dt);
   lightNow.hemi = lerp(lightNow.hemi, L.hemi, kl);
   lightNow.keyI = lerp(lightNow.keyI, L.keyI, kl);
   lightNow.exp = lerp(lightNow.exp, L.exp, kl);
   lightNow.floorGlow = lerp(lightNow.floorGlow, L.floorGlow, kl);
   lightNow.bloom = lerp(lightNow.bloom, L.bloom, kl);
-  lightNow.hemiSky.lerp(tmpC.set(L.hemiSky), kl);
-  lightNow.hemiGround.lerp(tmpC.set(L.hemiGround), kl);
-  lightNow.key.lerp(tmpC.set(L.key), kl);
+  lightNow.hemiSky.lerp(L.hemiSky, kl);
+  lightNow.hemiGround.lerp(L.hemiGround, kl);
+  lightNow.key.lerp(L.key, kl);
   hemi.intensity = lightNow.hemi; hemi.color.copy(lightNow.hemiSky); hemi.groundColor.copy(lightNow.hemiGround);
   keyLight.intensity = lightNow.keyI; keyLight.color.copy(lightNow.key);
   renderer.toneMappingExposure = lightNow.exp;
   bloom.strength = lightNow.bloom;
   for (const m of [M.oak, M.oakLight, M.walnut]) m.emissiveIntensity = lightNow.floorGlow;
-  walkLight.intensity = lerp(walkLight.intensity, S.mode === 'walk' ? 26 : 0, kl);
-  // soyalar tanlangan qavat atrofida
+  walkLight.intensity = lerp(walkLight.intensity, S.mode === 'walk' ? 26 * (0.3 + 0.7 * P.win) : 0, kl);
+  // asosiy yorug'lik: kunduzi quyosh, kechasi oy; soyalar tanlangan qavat atrofida
+  const el = sunAt(S.hour);
+  const w = clamp((el + 0.03) / 0.09, 0, 1);
+  LIGHT_DIR.copy(MOON_DIR).lerp(SUN_DIR, w);
+  if (LIGHT_DIR.y < 0.12) LIGHT_DIR.y = 0.12;
+  if (S.mode === 'homes' && LIGHT_DIR.y < 0.6) LIGHT_DIR.y = 0.6;
+  LIGHT_DIR.normalize();
   const ly = S.mode === 'homes' || S.mode === 'walk' ? base(S.floor) : 10;
   keyLight.target.position.set(0, ly, 0);
-  keyLight.position.set(-45, ly + 80, 40);
+  keyLight.position.set(LIGHT_DIR.x * 110, ly + LIGHT_DIR.y * 110, LIGHT_DIR.z * 110);
 
   // mashinalar
   for (const c of cars) {
@@ -2132,7 +2356,7 @@ function tick() {
     if (c.position.x > 170) c.position.x = -170;
     if (c.position.x < -170) c.position.x = 170;
   }
-  if (roof.garden.userData.water) M.pool.emissiveIntensity = 1.0 + Math.sin(t * 1.7) * 0.15;
+  if (roof.garden.userData.water) M.pool.emissiveIntensity = (1.0 + Math.sin(t * 1.7) * 0.15) * (0.25 + 0.75 * P.win);
   if (roof.garden.userData.flame) roof.garden.userData.flame.scale.y = 0.08 + Math.abs(Math.sin(t * 7) * Math.sin(t * 3.1)) * 0.05;
 
   // hover holatida qavat yoritilishi
@@ -2154,7 +2378,7 @@ function tick() {
 
   // kompas
   const az = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
-  $('#compassNeedle').setAttribute('transform', `rotate(${(-az * 180) / Math.PI + 180} 20 20)`);
+  $('#compassNeedle').setAttribute('transform', `rotate(${(az * 180) / Math.PI} 20 20)`);
 
   composer.render(dt);
   requestAnimationFrame(tick);
@@ -2202,6 +2426,7 @@ async function init() {
   $('#buildDone').textContent = `Tayyor · ${PROJECT.handover}`;
   $('#nowMark').style.left = `${PROJECT.progressNow * 100}%`;
   $('#leadPhoneText').textContent = PROJECT.phone;
+  $('#dlSunTimes').textContent = `Quyosh chiqishi ${fmtHour(PROJECT.sunrise)}, botishi ${fmtHour(PROJECT.sunset)}`;
   renderHeroStats();
   renderLevels();
   applyProgress(S.progress);

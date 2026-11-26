@@ -23,6 +23,7 @@
 <div id="app">
   <canvas id="scene" aria-label="Binoning 3D ko'rinishi"></canvas>
   <div class="pins" id="pins"></div>
+  <div class="shade" aria-hidden="true"></div>
 
   <!-- Yuqori panel -->
   <header class="topbar">
@@ -48,6 +49,44 @@
   <button type="button" class="compass" id="compass" aria-label="Ko'rinishni tiklash">
     <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18.5" fill="none" stroke="currentColor" stroke-opacity=".35"/><path id="compassNeedle" d="M20 7 L24.5 21 L20 18.6 L15.5 21 Z" fill="currentColor"/><text x="20" y="35" text-anchor="middle" font-size="7" fill="currentColor" opacity=".7">N</text></svg>
   </button>
+
+  <!-- Kun vaqti -->
+  <div class="daylight" id="daylight">
+    <button type="button" class="dl-toggle" id="dlToggle" aria-expanded="false" aria-controls="dlPop" aria-label="Kun vaqtini tanlash">
+      <svg class="dl-icon dl-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g></svg>
+      <svg class="dl-icon dl-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1Z" fill="currentColor"/></svg>
+      <span id="dlTime">21:30</span>
+      <span class="dl-label" id="dlLabel">Tun</span>
+    </button>
+    <div class="dl-pop" id="dlPop" role="group" aria-label="Kun vaqti">
+      <div class="dl-head">
+        <div>
+          <p class="eyebrow">Kun vaqti</p>
+          <p class="dl-big"><span id="dlBig">21:30</span> <span class="dl-phase" id="dlPhase">Tun</span></p>
+        </div>
+        <button type="button" class="icon-btn" id="dlPlay" aria-label="Bir kunni boshidan oxirigacha ko'rsatish" title="Bir kun davomida">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <svg class="dl-arc" viewBox="0 0 240 80" aria-hidden="true">
+        <path d="M24 62 A96 46 0 0 1 216 62" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="3 4"/>
+        <line x1="8" y1="62" x2="232" y2="62" stroke="currentColor" stroke-opacity=".3"/>
+        <text x="24" y="76" font-size="8" fill="currentColor" opacity=".6" text-anchor="middle">Sharq</text>
+        <text x="216" y="76" font-size="8" fill="currentColor" opacity=".6" text-anchor="middle">G'arb</text>
+        <circle id="dlSun" cx="120" cy="16" r="7"/>
+      </svg>
+      <input type="range" id="dlRange" min="0" max="1435" step="5" value="1290" aria-label="Soat">
+      <div class="dl-scale" aria-hidden="true"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+      <div class="chips dl-presets">
+        <button type="button" data-hour="6.7">Tong</button>
+        <button type="button" data-hour="13">Kunduz</button>
+        <button type="button" data-hour="18.15">Shom</button>
+        <button type="button" data-hour="22">Tun</button>
+        <button type="button" id="dlNow">Hozir</button>
+      </div>
+      <p class="dl-foot" id="dlSunTimes"></p>
+    </div>
+  </div>
 
   <!-- Bosh ko'rinish -->
   <section class="overview-ui ui" data-show="overview">

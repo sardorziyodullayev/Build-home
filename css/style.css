@@ -512,3 +512,70 @@ body.panel-open[data-mode] .homes-bar.ui[data-show] { opacity: 0; visibility: hi
 .walk-hud .chips button.is-active { background: var(--text); color: var(--night); border-color: var(--text); }
 .walk-hint { padding: 6px 12px; border-radius: var(--r-pill); background: var(--glass); color: var(--text); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 body[data-mode="walk"] .topbar { background: linear-gradient(to bottom, rgba(5, 8, 16, .6), rgba(5, 8, 16, 0)); padding-bottom: 28px; }
+
+/* ---------- kun vaqti ---------- */
+.daylight {
+  position: absolute; z-index: 35;
+  right: var(--gut-r); top: calc(var(--top) + 76px);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+}
+.dl-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 14px 0 10px;
+  border-radius: var(--r-pill); border: 1px solid var(--line);
+  background: var(--glass); color: var(--text);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  font-weight: 700; font-size: 13px;
+}
+.dl-toggle:hover, .daylight.is-open .dl-toggle { border-color: var(--line-strong); }
+.dl-icon { width: 18px; height: 18px; color: #b9c4e6; }
+.dl-sun { display: none; color: var(--lamp); }
+.daylight.is-day .dl-sun { display: block; }
+.daylight.is-day .dl-moon { display: none; }
+.dl-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.dl-pop {
+  width: 284px; padding: 16px;
+  border-radius: var(--r-card);
+  background: var(--glass-strong); border: 1px solid var(--line);
+  box-shadow: 0 20px 50px rgba(0,0,0,.45);
+  display: grid; gap: 10px;
+  opacity: 0; visibility: hidden; transform: translateY(-6px);
+  transition: opacity .2s, transform .2s, visibility 0s linear .2s;
+}
+.daylight.is-open .dl-pop { opacity: 1; visibility: visible; transform: none; transition: opacity .2s, transform .2s; }
+.dl-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.dl-big { margin: 2px 0 0; display: flex; align-items: baseline; gap: 10px; }
+#dlBig { font-family: var(--font-display); font-size: 26px; font-weight: 500; }
+.dl-phase { color: var(--lamp); font-weight: 700; font-size: 13px; }
+.dl-arc { width: 100%; height: auto; color: var(--muted); display: block; }
+#dlSun { fill: #c9d2ee; transition: fill .3s; }
+.daylight.is-day #dlSun { fill: var(--lamp); filter: drop-shadow(0 0 6px rgba(233,189,120,.8)); }
+#dlRange { width: 100%; margin: 0; appearance: none; -webkit-appearance: none; height: 22px; background: transparent; }
+#dlRange::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, #121a33 0%, #1c2850 20%, #f2a878 27%, #80b0e2 36%, #74aae6 54%, #86aad8 68%, #ff9c5c 75%, #283568 81%, #121a33 100%); }
+#dlRange::-moz-range-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, #121a33 0%, #1c2850 20%, #f2a878 27%, #80b0e2 36%, #74aae6 54%, #86aad8 68%, #ff9c5c 75%, #283568 81%, #121a33 100%); }
+#dlRange::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: var(--text); border: 3px solid var(--night); }
+#dlRange::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--text); border: 3px solid var(--night); }
+.dl-scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--faint); margin-top: -6px; }
+.dl-presets button { padding: 0 10px; }
+.dl-foot { margin: 0; font-size: 11.5px; color: var(--muted); }
+body[data-mode="homes"] .levels { top: calc(50% + 24px); }
+@media (max-width: 820px) {
+  .daylight { top: calc(var(--top) + 118px); }
+  .dl-toggle { height: 34px; padding: 0 12px 0 9px; font-size: 12px; }
+  .dl-label { display: none; }
+  .dl-pop { width: min(284px, calc(100vw - 32px)); }
+  body[data-mode="homes"] .levels { top: auto; }
+}
+
+/* yorug' osmon fonida ham matn o'qilsin */
+.shade {
+  position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(6, 10, 20, .5), rgba(6, 10, 20, 0) 150px),
+    linear-gradient(to top, rgba(6, 10, 20, .55), rgba(6, 10, 20, 0) 260px);
+  opacity: 0; transition: opacity .8s;
+}
+body.is-day .shade { opacity: 1; }
+body.is-day[data-mode="walk"] .shade { opacity: .6; }
+.seg { background: var(--glass); }
+.place-bar .eyebrow, .place-title, .brand { text-shadow: 0 1px 14px rgba(0, 0, 0, .55); }

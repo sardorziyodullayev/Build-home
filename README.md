@@ -17,6 +17,8 @@ Hamma narsa kod bilan yaratiladi (Three.js): bino, interyer, mebel, tom bog'i, k
 | **Ko'cha** | Pastki qavat: lobbi, kafe, do'kon. Harakatlanayotgan mashinalar, ko'cha chiroqlari. |
 | **So'rov** | "Qo'ng'iroq buyurtma qilish" formasi, tanlangan xonadon bilan birga. |
 | **Valyuta** | $ va so'm o'rtasida almashish. |
+| **Kun vaqti** | Tong, kunduz, shom, tun va har qanday soat (slayder). Quyosh vaqtga qarab sharqdan g'arbga harakatlanadi va soya tashlaydi. Osmon, tuman, deraza chiroqlari va ko'cha chiroqlari vaqtga mos o'zgaradi. "Hozir" tugmasi qurilmaning haqiqiy vaqtini qo'yadi, ▶ esa bir kunni 18 soniyada ko'rsatadi. Ichkarida ham ishlaydi: kunduzi derazadan kunduzgi shahar ko'rinadi. |
+| **Quyosh nuri** | Xonadon kartasida derazalar tomoni (janub/shimol, burchakdagilar uchun sharq/g'arb) va quyosh qachon tushishi ko'rsatiladi. |
 
 Havolalar: `#bino`, `#xonadonlar`, `#tom`, `#kocha` (masalan, sotuv ofisidagi planshetni to'g'ridan-to'g'ri xonadonlar sahifasida ochish uchun).
 
@@ -40,7 +42,9 @@ Three.js `cdn.jsdelivr.net` dan yuklanadi (versiya 0.170.0 ga qotirilgan).
 
 Hammasi `js/app.js` ning boshida:
 
-- `PROJECT`: nomi, manzil, qurilishning hozirgi foizi (`progressNow`), topshirish sanasi, dollar kursi, telefon, `leadEndpoint`.
+- `PROJECT`: nomi, manzil, qurilishning hozirgi foizi (`progressNow`), topshirish sanasi, dollar kursi, telefon, `leadEndpoint`, quyosh chiqishi/botishi (`sunrise`, `sunset`) va sahifa ochilgandagi vaqt (`startHour`).
+- Yo'nalish: ko'cha tomoni janub (+z), bog' tomoni shimol (-z). Haqiqiy uchastka boshqacha joylashgan bo'lsa, `sunAt()` dagi yo'nalishni va xonadonlardagi `sides`/`sun` matnlarini moslang.
+- `TOD_KEYS`: har bir vaqtdagi osmon ranglari va yorug'lik (tong, kunduz, shom, tun).
 - `ROOF_PLACES`, `STREET_PLACES`: tom va pastki qavatdagi joylar, matnlari.
 - `G_H`, `F_H`, `RES`, `WIDTHS`: qavat balandligi, qavatlar soni, xonadonlar kengligi.
 - Xonadonlar generatori (`UNITS`): hozir narx va holat namunaviy (deterministik tasodifiy). Haqiqiy loyihada bu ro'yxatni CRM/1C dan JSON qilib olish kerak: `id, f, side, idx, area, price, status`.
